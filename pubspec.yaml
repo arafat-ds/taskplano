@@ -1,0 +1,91 @@
+name: taskflow
+description: A scalable, production-ready productivity application built with Flutter Clean Architecture.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Production Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State Management ───────────────────────────────────────────────────────
+  # flutter_bloc: Provides BlocProvider, BlocBuilder, Cubit, and related
+  # widgets. Cubit is a lightweight subset of Bloc — perfect for managing
+  # feature-level UI state without the overhead of full event/state mapping.
+  flutter_bloc: ^9.1.1
+
+  # ── Navigation ─────────────────────────────────────────────────────────────
+  # go_router: Declarative, URL-based router maintained by the Flutter team.
+  # Supports deep linking, nested routes, and redirect guards — essential for
+  # auth-aware navigation in a multi-feature app like TaskFlow.
+  go_router: ^14.8.1
+
+  # ── Functional Programming ─────────────────────────────────────────────────
+  # dartz: Brings functional programming primitives to Dart — most importantly
+  # Either<Failure, Success>, which is the standard way to handle errors in
+  # Clean Architecture use cases without throwing exceptions.
+  dartz: ^0.10.1
+
+  # ── Local Database ─────────────────────────────────────────────────────────
+  # hive: A fast, lightweight NoSQL key-value store written in pure Dart.
+  # Used as the local persistence layer for tasks and user preferences.
+  hive: ^2.2.3
+
+  # hive_flutter: Flutter-specific helpers for Hive — initialises the database
+  # with the correct path on each platform and provides ValueListenableBuilder
+  # integration for reactive UI updates.
+  hive_flutter: ^1.1.0
+
+  # ── Dependency Injection ───────────────────────────────────────────────────
+  # get_it: A simple, fast service locator (IoC container). Keeps dependencies
+  # decoupled and makes the injection_container.dart the single source of truth
+  # for wiring repositories, use cases, and cubits together.
+  get_it: ^8.0.3
+
+  # ── Equality ───────────────────────────────────────────────────────────────
+  # equatable: Overrides == and hashCode based on a props list, removing
+  # boilerplate from entities and state classes. Required for BlocBuilder to
+  # correctly detect state changes and avoid unnecessary rebuilds.
+  equatable: ^2.0.7
+
+  # ── Backend / BaaS ─────────────────────────────────────────────────────────
+  # supabase_flutter: Official Flutter SDK for Supabase. Provides auth,
+  # database (PostgREST), realtime, storage, and edge functions clients.
+  # The anon key is a publishable key — protected by Row Level Security.
+  supabase_flutter: ^2.8.4
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Development Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # ── Linting ────────────────────────────────────────────────────────────────
+  # flutter_lints: The official Flutter lint rule set. Enforces idiomatic Dart
+  # style and catches common mistakes at analysis time, not at runtime.
+  flutter_lints: ^5.0.0
+
+  # ── Code Generation ────────────────────────────────────────────────────────
+  # build_runner: The Dart build system that drives all code generators.
+  # Run `dart run build_runner build --delete-conflicting-outputs` to generate
+  # Hive type adapters and any other generated files.
+  # Pinned to ^2.4.13 — hive_generator 2.x is incompatible with build_runner >=2.4.14
+  # due to a dart_style / analyzer transitive conflict.
+  build_runner: ^2.4.13
+
+  # hive_generator: Generates TypeAdapter classes from @HiveType / @HiveField
+  # annotations, so Hive can serialise custom Dart objects to binary without
+  # hand-written adapters.
+  hive_generator: ^2.0.1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Flutter Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+flutter:
+  uses-material-design: true
