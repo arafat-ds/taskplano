@@ -7,10 +7,13 @@ import 'package:taskflow/core/services/hive_service.dart';
 import 'package:taskflow/core/services/supabase_service.dart';
 import 'package:taskflow/core/theme/theme_cubit.dart';
 import 'package:taskflow/features/auth/data/datasources/auth_local_datasource.dart';
+import 'package:taskflow/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:taskflow/features/auth/data/models/user_model.dart';
 import 'package:taskflow/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:taskflow/features/auth/domain/repositories/auth_repository.dart';
 import 'package:taskflow/features/auth/domain/usecases/login_user.dart';
+import 'package:taskflow/features/auth/domain/usecases/logout_user.dart';
+import 'package:taskflow/features/auth/domain/usecases/signup_user.dart';
 import 'package:taskflow/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:taskflow/features/onboarding/presentation/cubit/onboarding_cubit.dart';
 import 'package:taskflow/features/profile/presentation/cubit/profile_cubit.dart';
@@ -30,16 +33,15 @@ final sl = GetIt.instance;
 Future<void> init() async {
   // ── 1. External: Supabase ─────────────────────────────────────────────────
   // SupabaseService.initialize() is called in main() before di.init(), so
-  // the client is ready here. Register it as a singleton so any datasource
-  // can receive it via constructor injection — no direct Supabase.instance
-  // calls outside of SupabaseService.
+  // the client is ready here. Registered as a singleton so datasources and
+  // AuthCubit receive the same instance via constructor injection.
   sl.registerLazySingleton<SupabaseClient>(() => SupabaseService.client);
 
-  // ── 2. External: Hive (auth + onboarding only) ────────────────────────────
-  // Task storage uses in-memory in this phase — no Hive box needed for tasks.
+  // ── 2. External: Hive ─────────────────────────────────────────────────────
   await HiveService.init();
 
-  final authBox = await HiveService.openBox<UserModel>(AppConstants.authBoxName);
+  final authBox =
+      await HiveService.openBox<UserModel>(AppConstants.authBoxName);
   final onboardingBox =
       await HiveService.openBox<dynamic>(AppConstants.onboardingBoxName);
 
@@ -48,12 +50,18 @@ Future<void> init() async {
       instanceName: 'onboardingBox');
 
   // ── 3. Data Sources ───────────────────────────────────────────────────────
+
   // Task: in-memory store — swap to TaskHiveDatasource when Hive is ready.
   sl.registerLazySingleton<TaskLocalDatasource>(
     () => TaskInMemoryDatasource(),
   );
 
-  // Auth: Hive-backed
+  // Auth remote: Supabase Auth — the source of truth for identity.
+  sl.registerLazySingleton<AuthRemoteDatasource>(
+    () => AuthRemoteDatasourceImpl(client: sl()),
+  );
+
+  // Auth local: Hive-backed session cache for offline restoration.
   sl.registerLazySingleton<AuthLocalDatasource>(
     () => AuthLocalDatasourceImpl(box: sl()),
   );
@@ -62,8 +70,14 @@ Future<void> init() async {
   sl.registerLazySingleton<TaskRepository>(
     () => TaskRepositoryImpl(localDatasource: sl()),
   );
+
+  // AuthRepositoryImpl receives BOTH remote and local datasources.
+  // Remote handles all auth operations; local caches the session.
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(localDatasource: sl()),
+    () => AuthRepositoryImpl(
+      remoteDatasource: sl(),
+      localDatasource: sl(),
+    ),
   );
 
   // ── 5. Use Cases ──────────────────────────────────────────────────────────
@@ -71,12 +85,14 @@ Future<void> init() async {
   sl.registerLazySingleton(() => CreateTask(sl()));
   sl.registerLazySingleton(() => UpdateTask(sl()));
   sl.registerLazySingleton(() => DeleteTask(sl()));
+
+  sl.registerLazySingleton(() => SignUpUser(sl()));
   sl.registerLazySingleton(() => LoginUser(sl()));
+  sl.registerLazySingleton(() => LogoutUser(sl()));
 
   // ── 6. Cubits ─────────────────────────────────────────────────────────────
-  // TaskCubit is a factory — fresh instance per BlocProvider.
-  // It is now fully wired to the use cases (Clean Architecture complete).
-  // To switch to Hive: only change the TaskLocalDatasource registration above.
+
+  // TaskCubit — factory (fresh instance per BlocProvider).
   sl.registerFactory(
     () => TaskCubit(
       getAllTasks: sl(),
@@ -86,24 +102,33 @@ Future<void> init() async {
     ),
   );
 
-  sl.registerFactory(() => ProfileCubit(authRepository: sl()));
+  // ProfileCubit — factory (no repository dependency; reads from AuthCubit).
+  sl.registerFactory(() => ProfileCubit());
 
-  // AuthCubit and OnboardingCubit are lazySingletons — AppRouter's redirect
-  // guard holds direct references to them, so they must be the same instances
-  // that MultiBlocProvider provides to the widget tree.
+  // AuthCubit — lazySingleton so AppRouter's _AuthNotifier and
+  // MultiBlocProvider share the exact same instance.
+  // SupabaseClient is injected so AuthCubit can subscribe to the
+  // onAuthStateChange stream for real-time session sync.
   sl.registerLazySingleton(
-    () => AuthCubit(loginUserUseCase: sl(), authRepository: sl()),
+    () => AuthCubit(
+      signUpUserUseCase: sl(),
+      loginUserUseCase: sl(),
+      logoutUserUseCase: sl(),
+      authRepository: sl(),
+      supabaseClient: sl(),
+    ),
   );
+
+  // OnboardingCubit — lazySingleton (same reason as AuthCubit).
   sl.registerLazySingleton(
     () => OnboardingCubit(sl(instanceName: 'onboardingBox')),
   );
 
-  // ── 6. Router ─────────────────────────────────────────────────────────────
+  // ── 7. Router ─────────────────────────────────────────────────────────────
   sl.registerLazySingleton<AppRouter>(
     () => AppRouter(authCubit: sl(), onboardingCubit: sl()),
   );
 
-  // ── 7. Theme ──────────────────────────────────────────────────────────────
-  // lazySingleton — one ThemeCubit shared across the entire app.
+  // ── 8. Theme ──────────────────────────────────────────────────────────────
   sl.registerLazySingleton(() => ThemeCubit());
 }

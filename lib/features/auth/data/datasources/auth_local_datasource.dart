@@ -3,14 +3,25 @@ import 'package:taskflow/core/constants/app_constants.dart';
 import 'package:taskflow/core/errors/exceptions.dart';
 import 'package:taskflow/features/auth/data/models/user_model.dart';
 
-/// AuthLocalDatasource handles persisting and reading auth state from Hive.
+/// AuthLocalDatasource manages the Hive-backed user session cache.
 ///
-/// For this starter, login is simulated locally (no real server).
-/// Swap this datasource for a remote one when a backend is added.
+/// Responsibilities:
+///   - Persist the authenticated [UserModel] after a successful login/signUp.
+///   - Retrieve the cached user on cold start (offline session restoration).
+///   - Clear the cache on logout.
+///
+/// This datasource does NOT perform any authentication — it is purely a
+/// local persistence layer. All auth operations go through
+/// [AuthRemoteDatasource] (Supabase).
 abstract class AuthLocalDatasource {
-  Future<UserModel> login(String email, String password);
-  Future<void> logout();
-  Future<UserModel?> getCurrentUser();
+  /// Persists [model] to the local Hive box.
+  Future<void> cacheUser(UserModel model);
+
+  /// Returns the cached [UserModel], or null if no user is stored.
+  Future<UserModel?> getCachedUser();
+
+  /// Removes the cached user from the local Hive box.
+  Future<void> clearUser();
 }
 
 class AuthLocalDatasourceImpl implements AuthLocalDatasource {
@@ -21,38 +32,29 @@ class AuthLocalDatasourceImpl implements AuthLocalDatasource {
   static const String _currentUserKey = 'current_user';
 
   @override
-  Future<UserModel> login(String email, String password) async {
+  Future<void> cacheUser(UserModel model) async {
     try {
-      // ── Simulated local auth ─────────────────────────────────────────────
-      // In a real app, validate credentials against a remote API here.
-      // For now, any non-empty email/password creates a local session.
-      final user = UserModel(
-        id: email.hashCode.abs().toString(),
-        name: email.split('@').first,
-        email: email,
-      );
-      await box.put(_currentUserKey, user);
-      return user;
+      await box.put(_currentUserKey, model);
     } catch (e) {
-      throw CacheException('Login failed: $e');
+      throw CacheException('Failed to cache user: $e');
     }
   }
 
   @override
-  Future<void> logout() async {
-    try {
-      await box.delete(_currentUserKey);
-    } catch (e) {
-      throw CacheException('Logout failed: $e');
-    }
-  }
-
-  @override
-  Future<UserModel?> getCurrentUser() async {
+  Future<UserModel?> getCachedUser() async {
     try {
       return box.get(_currentUserKey);
     } catch (e) {
-      throw CacheException('Failed to get current user: $e');
+      throw CacheException('Failed to read cached user: $e');
+    }
+  }
+
+  @override
+  Future<void> clearUser() async {
+    try {
+      await box.delete(_currentUserKey);
+    } catch (e) {
+      throw CacheException('Failed to clear user cache: $e');
     }
   }
 }

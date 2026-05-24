@@ -24,8 +24,9 @@ void main() async {
   await di.init();
 
   // ── 3. Auth state ──────────────────────────────────────────────────────────
-  // Trigger auth check before the first frame so GoRouter's redirect guard
-  // has a real state (Authenticated / Unauthenticated) immediately.
+  // Restores a persisted Supabase session and subscribes to auth state changes
+  // before the first frame so GoRouter's redirect guard has a real state
+  // (Authenticated / Unauthenticated) immediately — no login flash on restart.
   await di.sl<AuthCubit>().checkAuthStatus();
 
   runApp(const TaskFlowApp());
@@ -38,21 +39,19 @@ class TaskFlowApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        // ── Singletons (shared with AppRouter redirect guard) ──────────────
+        // ── Singletons ─────────────────────────────────────────────────────
+        // AuthCubit and OnboardingCubit are lazySingletons — AppRouter's
+        // _AuthNotifier holds a reference to the same AuthCubit instance.
         BlocProvider<AuthCubit>(create: (_) => di.sl<AuthCubit>()),
-        BlocProvider<OnboardingCubit>(create: (_) => di.sl<OnboardingCubit>()),
-
-        // ── Singleton (shared across all screens) ──────────────────────────
-        // ThemeCubit must be a singleton so toggling from any screen updates
-        // the MaterialApp.router at the root.
+        BlocProvider<OnboardingCubit>(
+            create: (_) => di.sl<OnboardingCubit>()),
         BlocProvider<ThemeCubit>(create: (_) => di.sl<ThemeCubit>()),
 
-        // ── Factories (fresh instance per navigation) ──────────────────────
+        // ── Factories ──────────────────────────────────────────────────────
+        // Fresh instances per navigation — no shared state needed.
         BlocProvider<TaskCubit>(create: (_) => di.sl<TaskCubit>()),
         BlocProvider<ProfileCubit>(create: (_) => di.sl<ProfileCubit>()),
       ],
-      // BlocBuilder<ThemeCubit> wraps MaterialApp.router so the entire app
-      // rebuilds with the new ThemeMode the instant the cubit emits.
       child: BlocBuilder<ThemeCubit, ThemeState>(
         builder: (context, themeState) {
           return MaterialApp.router(
@@ -60,7 +59,6 @@ class TaskFlowApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
-            // Driven by ThemeCubit — updates instantly on toggle.
             themeMode: themeState.themeMode,
             routerConfig: di.sl<AppRouter>().router,
           );

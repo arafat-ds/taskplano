@@ -42,3 +42,15 @@ class AuthError extends AuthState {
   @override
   List<Object?> get props => [message];
 }
+
+/// Sign-up succeeded but Supabase requires email confirmation before the
+/// session is active. The UI should show a "check your inbox" message.
+class AuthSignUpSuccess extends AuthState {
+  /// The email address the confirmation was sent to.
+  final String email;
+
+  const AuthSignUpSuccess(this.email);
+
+  @override
+  List<Object?> get props => [email];
+}
