@@ -292,6 +292,13 @@ class _DetailAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
               IconButton(
+                icon: Icon(Icons.ios_share_rounded,
+                    color: Theme.of(context).colorScheme.primary, size: 22),
+                tooltip: 'Share',
+                onPressed: () =>
+                    context.read<TaskCubit>().shareTask(task),
+              ),
+              IconButton(
                 icon: Icon(Icons.delete_outline_rounded,
                     color: const Color(0xFFEF4444), size: 22),
                 tooltip: 'Delete',

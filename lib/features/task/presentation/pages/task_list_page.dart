@@ -56,7 +56,30 @@ class _TaskListPageState extends State<TaskListPage>
     return GradientScaffold(
       extendBodyBehindAppBar: true,
       appBar: _GlassAppBar(tabController: _tabController),
-      body: BlocBuilder<TaskCubit, TaskState>(
+      body: BlocConsumer<TaskCubit, TaskState>(
+        listener: (context, state) {
+          if (state is TaskError) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(
+                content: Text(state.message),
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Theme.of(context).colorScheme.error,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ));
+          }
+          if (state is TaskActionSuccess) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(
+                content: Text(state.message),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ));
+          }
+        },
         builder: (context, state) {
           if (state is TaskInitial || state is TaskLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -72,6 +95,13 @@ class _TaskListPageState extends State<TaskListPage>
               children: [
                 // Space for the glass AppBar (appBar height + tabs + status bar)
                 const SizedBox(height: 148),
+                // Subtle sync indicator — shown during optimistic writes.
+                if (state.isSyncing)
+                  LinearProgressIndicator(
+                    minHeight: 2,
+                    backgroundColor: Colors.transparent,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 _StatsHeader(state: state),
                 Expanded(
                   child: AnimatedSwitcher(

@@ -17,7 +17,7 @@ import 'package:taskflow/features/auth/domain/usecases/signup_user.dart';
 import 'package:taskflow/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:taskflow/features/onboarding/presentation/cubit/onboarding_cubit.dart';
 import 'package:taskflow/features/profile/presentation/cubit/profile_cubit.dart';
-import 'package:taskflow/features/task/data/datasources/task_local_datasource.dart';
+import 'package:taskflow/features/task/data/datasources/task_remote_datasource.dart';
 import 'package:taskflow/features/task/data/repositories/task_repository_impl.dart';
 import 'package:taskflow/features/task/domain/repositories/task_repository.dart';
 import 'package:taskflow/features/task/domain/usecases/create_task.dart';
@@ -51,9 +51,9 @@ Future<void> init() async {
 
   // ── 3. Data Sources ───────────────────────────────────────────────────────
 
-  // Task: in-memory store — swap to TaskHiveDatasource when Hive is ready.
-  sl.registerLazySingleton<TaskLocalDatasource>(
-    () => TaskInMemoryDatasource(),
+  // Task remote: Supabase — source of truth for all task data.
+  sl.registerLazySingleton<TaskRemoteDatasource>(
+    () => TaskRemoteDatasourceImpl(client: sl()),
   );
 
   // Auth remote: Supabase Auth — the source of truth for identity.
@@ -68,7 +68,7 @@ Future<void> init() async {
 
   // ── 4. Repositories ───────────────────────────────────────────────────────
   sl.registerLazySingleton<TaskRepository>(
-    () => TaskRepositoryImpl(localDatasource: sl()),
+    () => TaskRepositoryImpl(remoteDatasource: sl()),
   );
 
   // AuthRepositoryImpl receives BOTH remote and local datasources.

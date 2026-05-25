@@ -59,6 +59,11 @@ dependencies:
   # The anon key is a publishable key — protected by Row Level Security.
   supabase_flutter: ^2.8.4
 
+  # ── Sharing ────────────────────────────────────────────────────────────────
+  # share_plus: Cross-platform native share sheet. Used for the Share Task
+  # feature — opens WhatsApp, Messenger, Email, etc. from a single call.
+  share_plus: ^10.1.4
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Development Dependencies
 # ─────────────────────────────────────────────────────────────────────────────

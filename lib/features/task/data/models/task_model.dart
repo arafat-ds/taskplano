@@ -2,13 +2,9 @@ import 'package:taskflow/features/task/domain/entities/task_entity.dart';
 
 /// TaskModel is the DATA layer representation of a task.
 ///
-/// In the in-memory phase it is a plain Dart class with no framework deps.
-/// When Hive is introduced, add:
-///   import 'package:hive/hive.dart';
-///   part 'task_model.g.dart';
-///   @HiveType(typeId: 0) on the class
-///   @HiveField(n) on each field
-/// and run: dart run build_runner build --delete-conflicting-outputs
+/// Handles JSON serialization for Supabase (PostgREST) responses.
+/// The [fromJson] / [toJson] methods map between Dart types and the
+/// Supabase column names defined in the tasks table.
 class TaskModel {
   final String id;
   final String title;
@@ -25,6 +21,33 @@ class TaskModel {
     required this.createdAt,
     this.dueDate,
   });
+
+  // ── JSON ──────────────────────────────────────────────────────────────────
+
+  /// Deserialises a Supabase row (snake_case keys) into a [TaskModel].
+  factory TaskModel.fromJson(Map<String, dynamic> json) => TaskModel(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        description: (json['description'] as String?) ?? '',
+        isCompleted: (json['is_completed'] as bool?) ?? false,
+        createdAt: DateTime.parse(json['created_at'] as String),
+        dueDate: json['due_date'] != null
+            ? DateTime.parse(json['due_date'] as String)
+            : null,
+      );
+
+  /// Serialises this model to a map for Supabase insert/update.
+  /// Keys match the Supabase column names exactly.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'is_completed': isCompleted,
+        'created_at': createdAt.toIso8601String(),
+        'due_date': dueDate?.toIso8601String(),
+      };
+
+  // ── Domain conversion ─────────────────────────────────────────────────────
 
   /// Creates a TaskModel from a domain entity.
   factory TaskModel.fromEntity(TaskEntity entity) => TaskModel(

@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskflow/core/utils/date_utils.dart';
 import 'package:taskflow/features/task/domain/entities/task_entity.dart';
+import 'package:taskflow/features/task/presentation/cubit/task_cubit.dart';
 
 /// TaskCard — premium glassmorphism card with animated checkbox.
 ///
@@ -218,14 +220,34 @@ class _TaskCardState extends State<TaskCard>
                           ),
                         ),
 
-                        // ── Chevron ────────────────────────────────────────
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10, right: 6),
-                          child: Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18,
-                            color: colorScheme.onSurface.withOpacity(0.25),
-                          ),
+                        // ── Chevron + Share ────────────────────────────────
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Share button
+                            GestureDetector(
+                              onTap: () => context
+                                  .read<TaskCubit>()
+                                  .shareTask(widget.task),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 8, 6, 4),
+                                child: Icon(
+                                  Icons.ios_share_rounded,
+                                  size: 16,
+                                  color: colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                            ),
+                            // Chevron
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6, bottom: 8),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: colorScheme.onSurface.withOpacity(0.25),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
