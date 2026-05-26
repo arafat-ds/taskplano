@@ -104,17 +104,20 @@ class AuthCubit extends Cubit<AuthState> {
 
   /// Signs up a new user with [email] and [password].
   ///
-  /// Emits [AuthAuthenticated] if the session is immediately active.
-  /// Emits [AuthSignUpSuccess] if Supabase requires email confirmation.
-  /// Emits [AuthError] on failure.
+  /// Emits [AuthSignUpSuccess] when Supabase requires email confirmation
+  /// (session is null but user was created — visible in Auth > Users).
+  /// Emits [AuthAuthenticated] when email confirmation is disabled and a
+  /// session is returned immediately.
+  /// Emits [AuthError] on any failure.
   Future<void> signUp(String email, String password) async {
     emit(const AuthLoading());
     final result = await signUpUserUseCase(email, password);
     result.fold(
       (failure) => emit(AuthError(failure.message)),
       (user) {
-        // Empty id means Supabase sent a confirmation email — no session yet.
-        if (user.id.isEmpty) {
+        // Use the domain flag — not id.isEmpty — to detect confirmation flow.
+        // The user always has a real UUID now; the flag is the correct signal.
+        if (user.needsEmailConfirmation) {
           emit(AuthSignUpSuccess(user.email));
         } else {
           emit(AuthAuthenticated(user));

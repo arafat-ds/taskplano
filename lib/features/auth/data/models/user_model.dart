@@ -40,5 +40,10 @@ class UserModel {
         email: entity.email,
       );
 
-  UserEntity toEntity() => UserEntity(id: id, name: name, email: email);
+  UserEntity toEntity() => UserEntity(
+        id: id,
+        name: name,
+        email: email,
+        needsEmailConfirmation: needsEmailConfirmation,
+      );
 }
